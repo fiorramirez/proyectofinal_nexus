@@ -1,0 +1,69 @@
+### Pruebas rápidas de la API con la extensión "REST Client" de VS Code.
+### 1) Ejecute "NEXUS API" (F5). 2) Envíe el login y use el token en las demás solicitudes.
+
+@host = http://localhost:5080
+
+### Login como coordinador (cuenta ficticia de demostración)
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "correo": "coordinador@nexus.test", "contrasena": "Coord#2026" }
+
+### Token de la respuesta anterior
+@token = {{login.response.body.$.token}}
+
+### RF003 + RF005: incidentes ordenados por prioridad (con factores)
+GET {{host}}/api/incidentes
+Authorization: Bearer {{token}}
+
+### RF003 + RF004: registrar incidente (devuelve coincidencias potenciales)
+POST {{host}}/api/incidentes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "titulo": "WiFi sin señal en biblioteca", "descripcion": "Nadie puede conectarse en el segundo piso",
+  "idCategoria": 1, "areaAfectada": "Biblioteca", "impacto": 4, "urgencia": 4 }
+
+### RF007: recomendación de recursos para el incidente 1
+GET {{host}}/api/incidentes/1/recomendaciones
+Authorization: Bearer {{token}}
+
+### RF008: confirmar asignación
+POST {{host}}/api/incidentes/1/asignar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "idRecurso": 1, "observacion": "Recomendación aceptada" }
+
+### RF008: transición NO permitida (Asignado -> Cerrado) => 409
+PUT {{host}}/api/incidentes/1/estado
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "estado": "Cerrado" }
+
+### RF009: panel de indicadores
+GET {{host}}/api/panel
+Authorization: Bearer {{token}}
+
+### RF010 + RF011: comparar escenario base contra uno sin el Equipo de Redes y +50 % de incidentes
+POST {{host}}/api/simulaciones/comparar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "escenarios": [
+  { "nombre": "Base", "volumenAdicionalPorcentaje": 0, "horasPorIncidente": 2 },
+  { "nombre": "Sin equipo de redes +50%", "disponibilidadRecursos": { "1": false },
+    "volumenAdicionalPorcentaje": 50, "horasPorIncidente": 2 } ] }
+
+### RNF001: un operador NO puede administrar usuarios => 403
+# @name loginOperador
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "correo": "operador@nexus.test", "contrasena": "Oper#2026" }
+
+###
+GET {{host}}/api/usuarios
+Authorization: Bearer {{loginOperador.response.body.$.token}}
